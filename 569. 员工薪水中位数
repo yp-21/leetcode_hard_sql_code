@@ -1,0 +1,92 @@
+表: Employee
+
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| id           | int     |
+| company      | varchar |
+| salary       | int     |
++--------------+---------+
+id 是该表的主键列(具有唯一值的列)。
+该表的每一行表示公司和一名员工的工资。
+ 
+
+编写解决方案，找出每个公司的工资中位数。
+
+以 任意顺序 返回结果表。
+
+查询结果格式如下所示。
+
+ 
+
+示例 1:
+
+输入: 
+Employee 表:
++----+---------+--------+
+| id | company | salary |
++----+---------+--------+
+| 1  | A       | 2341   |
+| 2  | A       | 341    |
+| 3  | A       | 15     |
+| 4  | A       | 15314  |
+| 5  | A       | 451    |
+| 6  | A       | 513    |
+| 7  | B       | 15     |
+| 8  | B       | 13     |
+| 9  | B       | 1154   |
+| 10 | B       | 1345   |
+| 11 | B       | 1221   |
+| 12 | B       | 234    |
+| 13 | C       | 2345   |
+| 14 | C       | 2645   |
+| 15 | C       | 2645   |
+| 16 | C       | 2652   |
+| 17 | C       | 65     |
++----+---------+--------+
+输出: 
++----+---------+--------+
+| id | company | salary |
++----+---------+--------+
+| 5  | A       | 451    |
+| 6  | A       | 513    |
+| 12 | B       | 234    |
+| 9  | B       | 1154   |
+| 14 | C       | 2645   |
++----+---------+--------+
+
+
+题解（MySQL版）：
+# Write your MySQL query statement below
+#本题关键：弄清楚什么是中位数。将数据升序排序，当数据条数为奇数的时候，取中间的那条数据，就是中位数；当数据条数为偶数的时候，取最中间的那两条数据之和除以2，即得中位数。本题不需要除以2，找到那两条数据即可。
+
+#1.a表，按company分组，salary升序排序
+#2.b表，获取中位数对于的id
+#3.关联两次b表，去计算
+
+with a as(
+select 
+row_number()over(partition by e.company order by e.salary) as rk,
+e.id ,
+e.company ,
+e.salary 
+from Employee e order by e.company,e.salary ),
+
+b as (
+select b.company,
+case when b.ct%2=0 then b.ct/2 else floor(b.ct/2)+1 end as fw1,
+case when b.ct%2=0 then b.ct/2+1 else floor(b.ct/2)+1 end as fw2
+from (
+select a.company, count(*) as ct  from  (
+select 
+row_number()over(partition by e.company order by e.salary) as rk,
+e.company  
+from Employee e order by e.company,e.salary )a group by a.company)b 
+)
+
+
+select 
+a.id,a.company,a.salary
+from a left join b on a.company = b.company and a.rk = b.fw1
+left join b b2 on a.company = b2.company and a.rk = b2.fw2
+where length(b.company||b.fw1||b.fw2||b2.company||b2.fw1||b2.fw2) is not null ;
